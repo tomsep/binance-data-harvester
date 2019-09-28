@@ -1,0 +1,7 @@
+.git
+.idea
+
+/data
+
+**/*.sqlite
+**/*.sqlite-journal
