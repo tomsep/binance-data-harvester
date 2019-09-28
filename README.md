@@ -1,5 +1,8 @@
+![](https://img.shields.io/badge/python-3.7-blue) ![](https://img.shields.io/badge/license-MIT-green) 
+
 Streams [Binance](https://www.binance.com) ticker and order book data to a local SQL database.
 Logged data may reach 10 GB/day and beyond depending on the number of trading pairs logged.
+
 
 
 ## Features
