@@ -1,0 +1,90 @@
+
+# Naming explained here:
+# https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md
+
+24hrTicker:
+  primary key: ("Event time", Symbol)
+  e:
+    alias: Event type
+    type: TEXT
+  E:
+    alias: Event time
+    type: INT
+  s:
+    alias: Symbol
+    type: TEXT
+  p:
+    alias: Price change
+    type: TEXT
+  P:
+    alias: Price change percent
+    type: TEXT
+  w:
+    alias: Weighted average price
+    type: TEXT
+  x:
+    alias: First trade(F)-1 price
+    type: TEXT
+  c:
+    alias: Last price
+    type: TEXT
+  Q:
+    alias: Last quantity
+    type: TEXT
+  b:
+    alias: Best bid price
+    type: TEXT
+  B:
+    alias: Best bid quantity
+    type: TEXT
+  a:
+    alias: Best ask price
+    type: TEXT
+  A:
+    alias: Best ask quantity
+    type: TEXT
+  o:
+    alias: Open price
+    type: TEXT
+  h:
+    alias: High price
+    type: TEXT
+  l:
+    alias: Low price
+    type: TEXT
+  v:
+    alias: Total traded base asset volume
+    type: TEXT
+  q:
+    alias: Total traded quote asset volume
+    type: TEXT
+  O:
+    alias: Statistics open time
+    type: INT
+  C:
+    alias: Statistics close time
+    type: INT
+  F:
+    alias: First trade ID
+    type: INT
+  L:
+    alias: Last trade ID
+    type: INT
+  n:
+    alias: Total number of trades
+    type: INT
+
+depth20:
+  primary key: ("Last update ID")
+  timestamp:
+    alias: timestamp
+    type: INT
+  lastUpdateId:
+    alias: "Last update ID"
+    type: INT
+  bids:
+    alias: bids
+    type: TEXT
+  asks:
+    alias: asks
+    type: TEXT
