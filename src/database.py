@@ -1,6 +1,7 @@
 import logging
 log = logging.getLogger(__name__)
 import sqlite3
+import mysql.connector
 
 
 class DataBase:
@@ -84,3 +85,31 @@ class DataBase:
         else:
             self._action_counter -= 1
 
+
+class MySQLDB:
+
+    def __init__(self, host, user, passwd, db_name):
+        self._db = MySQLDB._connect(host, user, passwd)
+        self._cursor = self._db.cursor()
+        if db_name not in self.get_databases():
+            MySQLDB._create_database(self._cursor, db_name)
+
+
+    def get_databases(self):
+        self._cursor.execute('SHOW DATABASES')
+        return [x[0] for x in self._cursor]
+
+    @staticmethod
+    def _connect(host, user, passwd):
+        db = mysql.connector.connect(
+            host=host,
+            user=user,
+            passwd=passwd
+        )
+        log.info(f'Connected to MySQL, host: {host}, user: {user}.')
+        return db
+
+    @staticmethod
+    def _create_database(cursor, db_name):
+        cursor.execute(f'CREATE DATABASE {db_name}')
+        log.info(f'Database "{db_name}" was created.')
