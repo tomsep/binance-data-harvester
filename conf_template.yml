@@ -1,5 +1,11 @@
-commit_freq: 200  # How often database transactions are committed.
 record_symbols: [BTCUSDT, ETHUSDT, BNBUSDT]
 
-db_path: ./data/db.sqlite
 log_level: DEBUG
+
+db:
+  host: localhost
+  port: 3306
+  user: root
+  passwd: root
+  db_name: binance_harvester
+  commit_freq: 50  # How often database transactions are committed.

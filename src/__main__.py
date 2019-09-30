@@ -1,16 +1,29 @@
 import logging
 import yaml
 import time
-import os
 import queue
 from twisted.internet import reactor
 import warnings
+import signal
 
 from src.stream import StreamHandler
-from src.database import DataBase
+from src.database import MySQLDB
 
 
 log = logging.getLogger(__name__)
+
+
+class GracefulKiller:
+    """ Catch termination signal
+    Source: https://stackoverflow.com/a/31464349
+    """
+    kill_now = False
+    def __init__(self):
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
+
+    def exit_gracefully(self, signum, frame):
+        self.kill_now = True
 
 
 def exit_program():
@@ -21,8 +34,9 @@ def exit_program():
 def processing_loop(q, db, symbols_to_record, timeout=60):
 
     symbols_to_record = [x.lower() for x in symbols_to_record]
+    kill_event = GracefulKiller()
 
-    while True:
+    while not kill_event.kill_now:
         data = q.get(timeout=timeout)
         q.task_done()
         try:
@@ -35,13 +49,13 @@ def processing_loop(q, db, symbols_to_record, timeout=60):
             for item in data['data']:
                 pair, event_time = item['s'], item['E']
                 if pair.lower() in symbols_to_record:
-                    db.insert(f'{pair}@24hrTicker', item)
+                    db.insert_ticker(item)
                     log.debug(f'Inserted ticker for "{pair}" at event time {event_time}.')
 
         elif '@depth' in stream_type:
             timestamp = int(time.time())
             data['data']['timestamp'] = timestamp
-            db.insert(stream_type, data['data'])
+            db.insert_depth(data)
             log.debug(f'Inserted to table "{stream_type}" at timestamp {timestamp}.')
 
         else:
@@ -61,14 +75,8 @@ if __name__ == '__main__':
     with open('./db_field_names.yml') as f:
         field_naming_rules = yaml.safe_load(f.read())
 
-    db_abs_path = os.path.abspath(cfg['db_path'])
-
-    if not os.path.isfile(db_abs_path):
-        input(f'Database doesn´t exist. Path:\n{db_abs_path}\nPress enter to create and continue: ')
-
-    log.info(f'Using database at {db_abs_path}')
-
-    dbb = DataBase(db_abs_path, field_naming_rules, cfg['commit_freq'])
+    dbb = MySQLDB(cfg['db']['host'], cfg['db']['port'], cfg['db']['user'], cfg['db']['passwd'],
+                  cfg['db']['db_name'], cfg['db']['commit_freq'])
 
     q = queue.Queue()
 
@@ -83,6 +91,10 @@ if __name__ == '__main__':
         processing_loop(q, dbb, cfg['record_symbols'])
     except queue.Empty:
         log.critical('Processing loop timed out.')
+    except KeyboardInterrupt:
+        pass
+
+    dbb.close()
 
     ticker_stream.close()
     for stream in depth_streams:
