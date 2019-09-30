@@ -10,11 +10,8 @@ services:
         image: mysql
         container_name: db
         environment:
-            - MYSQL_DATABASE=db_name
             - MYSQL_ROOT_PASSWORD=root
             - DB_PORT=3306
             - DB_HOST=localhost
-        volumes:
-            - ./data/db:/docker-entrypoint-initdb.d
         ports:
             - "3306:3306"
