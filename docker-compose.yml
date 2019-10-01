@@ -13,5 +13,7 @@ services:
             - MYSQL_ROOT_PASSWORD=root
             - DB_PORT=3306
             - DB_HOST=localhost
+        volumes:
+            - /home/tomi/mydb_tmp:/var/lib/mysql
         ports:
             - "3306:3306"
