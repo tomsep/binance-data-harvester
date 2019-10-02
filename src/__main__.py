@@ -7,7 +7,7 @@ import warnings
 import signal
 
 from src.stream import StreamHandler
-from src.database import MySQLDB
+from src.database import Database
 
 
 log = logging.getLogger(__name__)
@@ -75,8 +75,8 @@ if __name__ == '__main__':
     with open('./db_field_names.yml') as f:
         field_naming_rules = yaml.safe_load(f.read())
 
-    dbb = MySQLDB(cfg['db']['host'], cfg['db']['port'], cfg['db']['user'], cfg['db']['passwd'],
-                  cfg['db']['db_name'], cfg['db']['commit_freq'])
+    db_path = './dbdb.sqlite'
+    dbb = Database(db_path)
 
     q = queue.Queue()
 
