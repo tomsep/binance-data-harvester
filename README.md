@@ -1,5 +1,8 @@
 ![](https://img.shields.io/badge/python-3.7-blue) ![](https://img.shields.io/badge/license-MIT-green) 
 
+
+SQLITE for arm compatibility and easy portability.
+
 Streams [Binance](https://www.binance.com) ticker and order book data to a local SQL database.
 Logged data may reach 10 GB/day and beyond depending on the number of trading pairs logged.
 
@@ -78,4 +81,12 @@ docker exec -it mysql1 mysql -uroot -p
 
 
 GRANT ALL PRIVILEGES ON *.* TO 'username'@'localhost' IDENTIFIED BY 'password';
+
+SQLITE ATTACH allows easy migration of data from temp_db (e.g. using DB Browser)
+INSERT OR IGNORE INTO btcusdt_asks SELECT * FROM dbdb2.btcusdt_asks;
+
+
+journal mode WAL to reduce disk writes (makes ATTACH a bit more risky because collection of dbs is no more atomic. Invidual dbs still atomic)
+https://www.sqlite.org/wal.html
+PRAGMA journal_mode=WAL;
 

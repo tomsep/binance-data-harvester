@@ -1,15 +1,24 @@
 import logging
 log = logging.getLogger(__name__)
 import sqlite3
+import time
+import os
 
 
 class Database:
 
     def __init__(self, db_path):
 
-        self.db_path = db_path
-        self._conn = sqlite3.connect(self.db_path, timeout=30, check_same_thread=False)
+        self._db_path = db_path
+        self._conn = sqlite3.connect(self._db_path, timeout=30, check_same_thread=False)
+        log.info('Connected to database.')
+
         self._conn.execute('PRAGMA foreign_keys = 1')
+        log.info('Database foreign keys enabled.')
+
+        # WAL reduces disk writes, https://www.sqlite.org/wal.html
+        self._conn.execute('PRAGMA journal_mode=WAL;')
+        log.info('Database WAL mode enabled.')
 
         self._tables = self.tables()
 
@@ -18,16 +27,20 @@ class Database:
             res = conn.execute('SELECT name FROM sqlite_master WHERE type = "table"')
         return [x[0] for x in res.fetchall()]
 
-    def insert_ticker(self, ticker):
+    def insert_ticker(self, ticker, timestamp, ignore_if_exists=False):
+
+        if ignore_if_exists:
+            ignore = 'OR IGNORE'
+        else:
+            ignore = ''
 
         symbol = ticker['s'].lower()
         table = f'{symbol}_ticker'
-        event_time = ticker['E']
         last_price = ticker['c']
         close_time = ticker['C']
 
-        sql = f'INSERT INTO {table} (close_time, last_price, event_time) VALUES (?, ?, ?)'
-        val = (close_time, last_price, event_time)
+        sql = f'INSERT {ignore} INTO {table} (close_time, last_price, timestamp) VALUES (?, ?, ?)'
+        val = (close_time, last_price, timestamp)
 
         try:
             self._conn.execute(sql, val)
@@ -36,9 +49,19 @@ class Database:
             self._create_ticker_table(symbol)
             self._conn.execute(sql, val)
 
-        self._conn.commit()
+        try:
+            self._conn.commit()
+            return True
+        except sqlite3.OperationalError as err:
+            log.error(err)
+            return False
 
-    def insert_depth(self, msg: dict):
+    def insert_depth(self, msg: dict, timestamp, ignore_if_exists=False):
+
+        if ignore_if_exists:
+            ignore = 'OR IGNORE'
+        else:
+            ignore = ''
 
         symbol = msg['stream'].split('@')[0]
         table_book, table_asks, table_bids = Database.depth_table_names(symbol)
@@ -52,7 +75,7 @@ class Database:
         value_placeholders = Database._value_placeholders(levels * 2 + 1)
 
         sql = f"""
-        INSERT INTO {table_asks} (last_update_id, {index_prices}, {index_quantity})
+        INSERT {ignore} INTO {table_asks} (last_update_id, {index_prices}, {index_quantity})
         VALUES {value_placeholders};
         """
 
@@ -68,7 +91,7 @@ class Database:
             self._conn.execute(sql, vals)
 
         sql = f"""
-        INSERT INTO {table_bids} (last_update_id, {index_prices}, {index_quantity})
+        INSERT {ignore} INTO {table_bids} (last_update_id, {index_prices}, {index_quantity})
         VALUES {value_placeholders};
         """
 
@@ -79,19 +102,30 @@ class Database:
         self._conn.execute(sql, vals)
 
         sql = f"""
-        INSERT INTO {table_book} (last_update_id)
-        VALUES (?);
+        INSERT {ignore} INTO {table_book} (last_update_id, timestamp)
+        VALUES (?, ?);
         """
-        self._conn.execute(sql, (last_update_id,))
+        self._conn.execute(sql, (last_update_id, timestamp))
 
-        self._conn.commit()
+        try:
+            self._conn.commit()
+            return True
+        except sqlite3.OperationalError as err:
+            log.error(err)
+            return False
 
     def close(self):
-        # TODO: UPDATE
         self._conn.commit()
-        self._db.close()
-        log.info(f'Closing DB connection to "{self._db.database}".')
-        print('closed')
+        self._conn.close()
+        log.info(f'Closing DB connection to "{self._db_path}".')
+
+    def reconnect(self):
+        while not os.path.isfile(self._db_path):
+            log.error('Waiting for database to be back up.')
+            time.sleep(5)
+
+        self._conn = sqlite3.connect(self._db_path, timeout=5, check_same_thread=False)
+        log.info('Reconnected to database.')
 
     @staticmethod
     def depth_column_names(levels: int, datatype=''):
@@ -118,7 +152,7 @@ class Database:
         table = f'{symbol.lower()}_ticker'
         sql = f"""
         CREATE TABLE {table}
-        (close_time BIGINT PRIMARY KEY, last_price DEC(16,8), event_time BIGINT);
+        (close_time BIGINT PRIMARY KEY, last_price DEC(16,8), timestamp BIGINT);
         """
         self._conn.execute(sql)
         log.info(f'Created table {table}.')
@@ -143,7 +177,7 @@ class Database:
 
         sql = f"""
         CREATE TABLE {table_book}
-        (last_update_id BIGINT PRIMARY KEY,
+        (last_update_id BIGINT PRIMARY KEY, timestamp BIGINT,
         FOREIGN KEY (last_update_id) REFERENCES {table_asks} (last_update_id) ON DELETE CASCADE,
         FOREIGN KEY (last_update_id) REFERENCES {table_bids} (last_update_id) ON DELETE CASCADE);
         """
