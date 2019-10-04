@@ -1,0 +1,6 @@
+record_symbols: [BTCUSDT, ETHUSDT]
+
+db_dir: ./data
+db_name: harvester_db.sqlite
+
+log_dir: ./logs
