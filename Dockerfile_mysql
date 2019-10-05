@@ -1,3 +1,0 @@
-FROM mariadb:10.4.8
-#FROM  mysql
-ENV DB_PORT 3306
