@@ -1,5 +1,0 @@
-commit_freq: 200  # How often database transactions are committed.
-record_symbols: [BTCUSDT, ETHUSDT, BNBUSDT]
-
-db_path: ./data/db.sqlite
-log_level: DEBUG

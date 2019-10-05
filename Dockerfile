@@ -9,5 +9,5 @@ RUN pip install -r requirements.txt
 # Copy the current directory contents into the container at /app
 COPY . /app
 
-CMD ["python3", "-m", "src"]
+ENTRYPOINT ["python3", "-m", "src"]
 
