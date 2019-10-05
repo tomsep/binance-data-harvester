@@ -1,43 +1,33 @@
 ![](https://img.shields.io/badge/python-3.7-blue) ![](https://img.shields.io/badge/license-MIT-green) 
 
 
-SQLITE for arm compatibility and easy portability.
-
-Streams [Binance](https://www.binance.com) ticker and order book data to a local SQL database.
-Logged data may reach 10 GB/day and beyond depending on the number of trading pairs logged.
-
-12H results MB
-asks+bids, orderbook, ticker (about 42k rows each)
-(15.5*2 + 1.5 + 2.5)
-~= 70 MB / day per one symbol
-
-
+Streams [Binance](https://www.binance.com) ticker and order book data to a local SQLite database. Disk space usage daily is approximately 26 MB per trading pair (with order book depth 5), e.g. recording everyhting would take around 5 GB/day.
 
 
 ## Features
 
-* Log 24hr ticker and order books for selected trading pairs.
-* Batched disk write to reduce total disk writes.
+* Log 24hr ticker and order books (depth 5) for selected trading pairs.
 * Docker container deployment.
+* Hot unplug target drive (inserts are queued in memory until drive is mounted back).
+* SQLite database for best compatibility and portability.
 
 ## Usage
 
 Rename *conf_template.yml* to *conf.yml*. Edit values if needed.
-Do not edit db_path variable if you plan to run the program inside Docker container.
-For container the database location is specified using the -v parameter.
+Set db_dir to '/data/' if you plan to run the program inside Docker container. For container the database location is specified using the -v parameter.
 
 
 	# Build docker container
 	cd /project_source_root/
-	docker build --tag=binance-data-harvester .
+	docker build --tag=harvester .
 	
 	# Run
 	# Replace "~/home/data" with your database folder path.
-	docker run -it -v ~/home/data:/app/data binance-data-harvester
+	docker run -it -v ~/home/data:/data harvester
 	
-	# OR
+	# OR for example
 	# To map to "./data" use "$PWD/data"
-	docker run -it -v $PWD/data:/app/data binance-data-harvester
+	docker run -it -v $PWD/data:/data harvester
 	
 ## Planned features
 * Merge data from multiple program instances (redundancy).
@@ -45,48 +35,7 @@ For container the database location is specified using the -v parameter.
 * Status server.
 * Ability to recover from power or network failures.
 
-## Other useful notes
-* Access shell within the mysql container
+## Other notes
+* SQLite is set to use [WAL](https://www.sqlite.org/wal.html) journal mode to reduce disk writes.
 
-		docker exec -it <container_name> bash -l
-		# SQL execution shell:
-		mysql --user=<user> --password <db_name>
-		
-/home/tomi/mydb_tmp:/var/lib/mysql
-	
-	# Build containers
-	docker build -f Dockerfile_mysql . --tag harvester_db
-	docker build -f Dockerfile_app . --tag harvester
-	
-	# Running (only once, next time use docker start)
-	# To specify custom db data path use arg (-v <desired_path>:/var/lib/mysql)
-	docker run -p 3306:3306 --name harvester_db -e MYSQL_ROOT_PASSWORD=root -d harvester_db
-	
-	docker run --network host --name harvester -d harvester
-	
-	# Stopping
-	docker stop harvester
-	docker stop harvester_db
-	
-	# Starting
-	docker start harvester_db
-	docker start harvester
-	
-	# Removing (-v removes volumes)
-	docker rm <name> -v
-
-
-https://hub.docker.com/r/mysql/mysql-server/
-docker exec -it mysql1 mysql -uroot -p
-
-
-GRANT ALL PRIVILEGES ON *.* TO 'username'@'localhost' IDENTIFIED BY 'password';
-
-SQLITE ATTACH allows easy migration of data from temp_db (e.g. using DB Browser)
-INSERT OR IGNORE INTO btcusdt_asks SELECT * FROM dbdb2.btcusdt_asks;
-
-
-journal mode WAL to reduce disk writes (makes ATTACH a bit more risky because collection of dbs is no more atomic. Invidual dbs still atomic)
-https://www.sqlite.org/wal.html
-PRAGMA journal_mode=WAL;
-
+* Foreign keys are enabled for SQLite.
